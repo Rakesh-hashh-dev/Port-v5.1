@@ -1,0 +1,47 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+default:
+  image: node:22
+  before_script:
+    # npm install (not ci) until package-lock.json is regenerated locally
+    - npm install --no-audit --no-fund
+
+stages:
+  - lint
+  - build
+  - deploy
+
+lint:
+  stage: lint
+  # Tighten to a hard failure once the codebase is lint-clean
+  allow_failure: true
+  script:
+    - npm run lint
+
+build:
+  stage: build
+  variables:
+    # Project Pages are served from /port-v5/
+    VITE_BASE_PATH: "/port-v5/"
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+
+pages:
+  stage: deploy
+  dependencies:
+    - build
+  before_script: []
+  script:
+    - cp -r dist public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
